@@ -23,4 +23,7 @@ It generates the `pyrightconfig.json` file as well.
 
 ![workon in action](https://user-images.githubusercontent.com/25168308/174585094-04efa04f-3df7-446c-aec1-6e8568ccc092.gif)
 
+
+Two projects, one with fastapi and another with django installed, both distinct virtual environments
+![neovim](https://user-images.githubusercontent.com/25168308/174589849-a3485424-c369-472c-a395-e1f195057d4a.gif)
 yeah...
