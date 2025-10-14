@@ -33,13 +33,13 @@ When executed, `workon` attempts to activate the appropriate virtual environment
 
 Then, it generates the `pyrightconfig.json`, `ty.toml` and `pyrefly.toml` files.
 
-|![workon in action](https://github.com/user-attachments/assets/4f4f9fd1-df31-4ca0-b15d-8addda2157ae)| 
+|![workon in action](https://github.com/kuator/kuator.github.io/blob/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4)| 
 |:--:| 
 | *workon in action* |
 
 Two projects, one with fastapi and another with django installed, both distinct virtual environments.
 Go-to-definition jumps to the project-specific virtual environments.
 
-|![in action in neovim](https://github.com/user-attachments/assets/0caf868c-e1a4-4901-95fd-481c449dcc73)| 
+|![in action in neovim](https://github.com/kuator/kuator.github.io/blob/gh-pages/500780234-0caf868c-e1a4-4901-95fd-481c449dcc73.png)| 
 |:--:| 
 | *inside neovim* |
