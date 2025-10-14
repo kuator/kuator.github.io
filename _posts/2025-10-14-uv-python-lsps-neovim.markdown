@@ -1,8 +1,8 @@
 ---
 layout: post
-title:  "ASDF+Neovim+Python LSPs"
+title:  "UV+Neovim+Python LSPs"
 date:   2025-10-14 10:56:48 +0500
-categories: neovim asdf pyright
+categories: neovim uv basedpyright pyrefly ty
 ---
 I use Neovim with the built-in LSP client, but I’m encountering an issue when working with multiple Python projects that each have their own virtual environments.
 
@@ -12,7 +12,7 @@ However, if I want to open a different Python project during the same Neovim ses
 
 There is an ongoing [GitHub issue (#500)](https://github.com/neovim/nvim-lspconfig/issues/500) that discusses various solutions and workarounds for this problem.
 
-I use Pyright, and fortunately, it supports project-specific virtual environments: [link](https://github.com/microsoft/pyright/issues/30#issuecomment-477892706).
+Fortunately, `ty`, `pyrefly` and `basedpyright` support project-specific virtual environments: [link](https://github.com/microsoft/pyright/issues/30#issuecomment-477892706) for `basedpyright`.
 
 To ensure Pyright picks up the correct virtual environment, it is necessary to create a `pyrightconfig.json` file at the root of each project with the following structure:
 
