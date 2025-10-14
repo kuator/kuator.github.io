@@ -36,14 +36,33 @@ Then, it generates the `pyrightconfig.json`, `ty.toml` and `pyrefly.toml` files.
 <!-- |![workon in action](https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4)|  -->
 <!-- |:--:|  -->
 <!-- | *workon in action* | -->
+<style>
+.video-container {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+  overflow: hidden;
+  max-width: 100%;
+  margin: 2em auto;
+}
 
-<div style="text-align: center;">
-  <video width="600" controls>
+.video-container video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+</style>
+
+<div class="video-container">
+  <video controls>
     <source src="https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4" type="video/mp4">
     Your browser does not support the video tag.
   </video>
-  <p><em>workon in action</em></p>
 </div>
+
+<p align="center"><em>workon in action</em></p>
 
 Two projects, one with fastapi and another with django installed, both distinct virtual environments.
 Go-to-definition jumps to the project-specific virtual environments.
