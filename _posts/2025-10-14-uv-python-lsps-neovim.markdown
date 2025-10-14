@@ -14,7 +14,7 @@ There is an ongoing [GitHub issue (#500)](https://github.com/neovim/nvim-lspconf
 
 Fortunately, `ty`, `pyrefly` and `basedpyright` support project-specific virtual environments: [link](https://github.com/microsoft/pyright/issues/30#issuecomment-477892706) for `basedpyright`.
 
-To ensure Pyright picks up the correct virtual environment, it is necessary to create a `pyrightconfig.json` file at the root of each project with the following structure:
+To ensure `basedpyright` picks up the correct virtual environment, it is necessary to create a `pyrightconfig.json` file at the root of each project with the following structure:
 
 ```
 {
@@ -31,7 +31,7 @@ Python versions used for the environments are those installed via [`uv`](https:/
 
 When executed, `workon` attempts to activate the appropriate virtual environment for the current project directory. If no associated virtual environment is found, it prompts the user to create a new one.
 
-Then, it generates the `pyrightconfig.json`, `ty.toml` and `pyrefly.toml` files.
+Then, it generates the `pyrightconfig.json`, `ty.toml` and `pyrefly.toml` files. I put them in global `~/.config/git/gitignore` to avoid polluting the git history.
 
 <!-- |![workon in action](https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4)|  -->
 <!-- |:--:|  -->
