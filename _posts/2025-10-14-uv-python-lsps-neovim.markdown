@@ -70,3 +70,5 @@ Go-to-definition jumps to the project-specific virtual environments.
 |![in action in neovim](https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500780234-0caf868c-e1a4-4901-95fd-481c449dcc73.png)| 
 |:--:| 
 | *inside neovim* |
+
+There is also ![venv-selector](https://github.com/linux-cultist/venv-selector.nvim) plugin for neovim
