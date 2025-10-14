@@ -33,9 +33,17 @@ When executed, `workon` attempts to activate the appropriate virtual environment
 
 Then, it generates the `pyrightconfig.json`, `ty.toml` and `pyrefly.toml` files.
 
-|![workon in action](https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4)| 
-|:--:| 
-| *workon in action* |
+<!-- |![workon in action](https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4)|  -->
+<!-- |:--:|  -->
+<!-- | *workon in action* | -->
+
+<div style="text-align: center;">
+  <video width="600" controls>
+    <source src="https://raw.githubusercontent.com/kuator/kuator.github.io/refs/heads/gh-pages/500772136-4f4f9fd1-df31-4ca0-b15d-8addda2157ae.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+  <p><em>workon in action</em></p>
+</div>
 
 Two projects, one with fastapi and another with django installed, both distinct virtual environments.
 Go-to-definition jumps to the project-specific virtual environments.
