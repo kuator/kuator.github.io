@@ -59,7 +59,17 @@ def preview(normalize):
 <li><strong>Feedback:</strong> did the edit break anything?</li>
 </ol>
 <p>We’ll answer these in the editor, then apply them<br>to Python tooling and AI assistants.</p>
-<aside class="notes">30 seconds. State the audience promise: by the end, you should be able to explain what Tree-sitter contributes, what a language server contributes, and where ty, Ruff and uv fit. The rename example is the thread through the talk. Transition: first, can we find the call reliably using only a text pattern?</aside>
+<aside class="notes">30 seconds. State the audience promise: by the end, you should be able to explain what Tree-sitter contributes, what a language server contributes, and where ty, Ruff and uv fit. The rename example is the thread through the talk. Transition: begin with a short regex joke, then ask whether a text pattern can reliably find the call.</aside>
+</section>
+
+<section class="regex-quote-slide" data-name="Speaking of regex">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>Speaking of regex…</h2>
+<figure class="regex-quote">
+  <img src="assets/regex-quote-2023-hd.png" width="2172" height="724" alt="Post by Kuat Abylkassymov dated February 8, 2023: — Как часто вам приходится использовать RegEx на работе? — Регулярно">
+  <figcaption>Kuat Abylkassymov · 8 February 2023</figcaption>
+</figure>
+<aside class="notes">10–15 seconds. Pause for the joke: Регулярно means regularly, echoing regular expressions. This is your own post, shown as a cleaned high-resolution edit with the left divider removed. Keep it a short personal beat, not another technical explanation. Transition: regex is useful in everyday work. Let us see what happens when we use a text pattern to find a nested function call.</aside>
 </section>
 
 <section data-name="Why regex struggles with code structure">
@@ -73,17 +83,7 @@ example = &quot;normalize(fake)&quot;
 <tr><td><code>normalize(fake)</code></td><td>Matches text inside a string</td></tr>
 <tr><td><code>normalize(old_values)</code></td><td>Matches text inside a comment</td></tr>
 </tbody></table></div></div>
-<aside class="notes">About 50 seconds. This is a concrete failure of the displayed Python re pattern, not a claim every regular expression fails on every program. The negated character class stops at the first closing parenthesis, so it truncates a nested call. The pattern also has no Python string or comment context. Switching greediness does not supply a language grammar. You can build increasingly elaborate patterns for restricted cases, but nested constructs, escaping, multiline strings and new syntax increase maintenance cost. Regex remains excellent for text search, simple token patterns and prefiltering; this is about structural reliability, not a speed benchmark. Transition: Regex remains useful in everyday work. Take a short personal aside before moving from text patterns to syntax trees.</aside>
-</section>
-
-<section class="regex-quote-slide" data-name="Speaking of regex">
-<div class="section-label">02 / Structure · Tree-sitter</div>
-<h2>Speaking of regex…</h2>
-<figure class="regex-quote">
-  <img src="assets/regex-quote-2023-hd.png" width="2172" height="724" alt="Post by Kuat Abylkassymov dated February 8, 2023: — Как часто вам приходится использовать RegEx на работе? — Регулярно">
-  <figcaption>Kuat Abylkassymov · 8 February 2023</figcaption>
-</figure>
-<aside class="notes">10–15 seconds. Pause for the joke: Регулярно means regularly, echoing regular expressions. This is your own post, shown as a cleaned high-resolution edit with the left divider removed. Keep it a short personal beat, not another technical explanation. Transition: regex is useful for text; when the task depends on nested code structure, let a language grammar identify the constructs. Continue to Tree-sitter.</aside>
+<aside class="notes">About 50 seconds. This is a concrete failure of the displayed Python re pattern, not a claim every regular expression fails on every program. The negated character class stops at the first closing parenthesis, so it truncates a nested call. The pattern also has no Python string or comment context. Switching greediness does not supply a language grammar. You can build increasingly elaborate patterns for restricted cases, but nested constructs, escaping, multiline strings and new syntax increase maintenance cost. Regex remains excellent for text search, simple token patterns and prefiltering; this is about structural reliability, not a speed benchmark. Transition: the pattern sees characters. To match complete constructs consistently, let a language grammar identify the structure.</aside>
 </section>
 
 <section class="chapter-slide" data-background-color="#123b3b" data-name="Tree-sitter: text → tree">
