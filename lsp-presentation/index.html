@@ -83,7 +83,7 @@ example = &quot;normalize(fake)&quot;
 <tr><td><code>normalize(fake)</code></td><td>Matches text inside a string</td></tr>
 <tr><td><code>normalize(old_values)</code></td><td>Matches text inside a comment</td></tr>
 </tbody></table></div></div>
-<aside class="notes">About 50 seconds. This is a concrete failure of the displayed Python re pattern, not a claim every regular expression fails on every program. The negated character class stops at the first closing parenthesis, so it truncates a nested call. The pattern also has no Python string or comment context. Switching greediness does not supply a language grammar. You can build increasingly elaborate patterns for restricted cases, but nested constructs, escaping, multiline strings and new syntax increase maintenance cost. Regex remains excellent for text search, simple token patterns and prefiltering; this is about structural reliability, not a speed benchmark. Transition: the pattern sees characters. To match complete constructs consistently, let a language grammar identify the structure.</aside>
+<aside class="notes">About 50 seconds. This is a concrete failure of the displayed Python re pattern, not a claim every regular expression fails on every program. It is not a comparison against an entire TextMate grammar, which can maintain nested scopes and embedded-language rules. The negated character class stops at the first closing parenthesis, so it truncates a nested call. The pattern also has no Python string or comment context. Switching greediness does not supply a language grammar. You can build increasingly elaborate patterns for restricted cases, but nested constructs, escaping, multiline strings and new syntax increase maintenance cost. Regex remains excellent for text search, simple token patterns and prefiltering; this is about structural reliability, not a speed benchmark. Transition: the pattern sees characters. To match complete constructs consistently, let a language grammar identify the structure.</aside>
 </section>
 
 <section class="chapter-slide" data-background-color="#123b3b" data-name="Tree-sitter: text → tree">
@@ -124,7 +124,29 @@ example = &quot;normalize(fake)&quot;
 <pre><code class="language-text">Before: normalize([2.0, 4.0])
 During: normalize([2.0,
 After:  normalize([2.0, 8.0])</code></pre><ol><li>Update the old tree’s positions for the edit.</li><li>Parse the new source, supplying that edited tree.</li><li>Reuse syntax structure where possible.</li></ol><p><small>Error recovery keeps incomplete code useful to editor features.</small></p>
-<aside class="notes">60 seconds. Tree-sitter is a parser generator and an incremental parsing runtime. Do not promise it only reparses changed characters: an edit can invalidate a larger area depending on grammar and context. ERROR and missing nodes help represent incomplete code. Reusing syntax structure is not the same as rerunning only affected queries. Transition: We can now recognize the call efficiently. We still have not established which function the name denotes.</aside>
+<aside class="notes">60 seconds. Tree-sitter is a parser generator and an incremental parsing runtime. Do not promise it only reparses changed characters: an edit can invalidate a larger area depending on grammar and context. ERROR and missing nodes help represent incomplete code. Reusing syntax structure is not the same as rerunning only affected queries. Transition: an editor can also encounter several languages inside one file. The same structural approach extends to those embedded regions.</aside>
+</section>
+
+<section data-name="One file. Multiple languages.">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>More than mixed-language colors.</h2>
+<p>Both TextMate and Tree-sitter support mixed-language highlighting.</p>
+<div class="columns">
+  <div><div class="syntax-label">EXAMPLE.HTML</div><pre><code class="language-html">&lt;style&gt;
+  .score { color: teal; }
+&lt;/style&gt;
+&lt;h1 class="score"&gt;Score&lt;/h1&gt;
+&lt;script&gt;
+  const score = 42;
+&lt;/script&gt;</code></pre></div>
+  <div><table><thead><tr><th>TextMate</th><th>Tree-sitter</th></tr></thead><tbody>
+    <tr><td>Tokens with scopes</td><td>Syntax nodes with source ranges</td></tr>
+    <tr><td>Embedded-language grammars</td><td>Embedded-language syntax trees</td></tr>
+  </tbody></table></div>
+</div>
+<p><small>Tree-sitter’s embedded trees can also support queries and structural selection.<br>Features depend on the grammars, queries and editor integration.</small></p>
+<p class="sources">Sources: <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">Tree-sitter injections</a> · <a href="https://code.visualstudio.com/api/language-extensions/syntax-highlight-guide#embedded-languages">TextMate embedded languages</a></p>
+<aside class="notes">45 seconds. Both TextMate and Tree-sitter can highlight JavaScript and CSS inside HTML. Merely showing colored embedded code does not distinguish the two. TextMate uses grammar rules, nested scopes and embedded-language support; it is substantially more capable than the isolated regex in our earlier example. Tree-sitter models a host tree and injected language trees. The additional benefit is queryable syntax nodes and source ranges that editor features can reuse to select arguments or inspect calls inside the embedded language. Structural selection and navigation still require an integration; do not promise every feature automatically works or that Tree-sitter is always faster or more accurate. Markdown code fences are another application, but not unique to Tree-sitter. The optional examples/mixed_languages.html demonstration should inspect embedded syntax structure as well as colors. Transition: syntax trees can describe several languages in one file, but they still do not resolve which imported function a name denotes. Return to normalize to introduce language services.</aside>
 </section>
 
 <section data-name="Shape of code. Meaning of code.">
@@ -353,6 +375,10 @@ Imports + ranges         References              Relevant tests
 <h2>A five-minute editor demo</h2>
 <ol><li>Open <code>examples/analysis.py</code>.</li><li>Inspect the Python syntax tree at the call.</li><li>Jump to definition; inspect the type of values.</li><li>Rename normalize to scale_features across files.</li><li>Verify the string and preview parameter stayed.</li><li>Run <code>python examples/check_scaling.py</code>.</li></ol><p><small>Requires Python editor support; tree inspection requires a Tree-sitter integration.</small></p>
 <aside class="notes">Optional live demo or a 60-second walkthrough. Tree-inspection UI and commands depend on the editor and plugins; avoid promising a portable shortcut. LSP support and Tree-sitter are separate installations. The deck does not run a server or parser itself. If the live demo fails, use the before/after slides. Verify every changed file including the test.</aside>
+</section>
+<section class="meme-slide" data-name="Closing meme" data-visibility="uncounted">
+<img src="assets/closing-resume-meme.png" width="800" height="800" alt="Meme depicting pyramid construction, captioned: Зато какое у вас резюме будет">
+<aside class="notes">Final image supplied by the presenter. End on the joke without additional explanation.</aside>
 </section>
 </div></div>
 <div class="deck-footer" aria-hidden="true"><span>LSP × TREE-SITTER</span><span id="chapter-label">Code intelligence</span></div>
