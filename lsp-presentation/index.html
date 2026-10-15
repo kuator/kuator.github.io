@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LSP &amp; Tree-sitter</title>
+<link rel="stylesheet" href="lib/reveal.js/dist/reveal.css">
+<link id="theme" rel="stylesheet" href="lib/reveal.js/dist/theme/white.css">
+<link rel="stylesheet" href="lib/reveal.js/plugin/highlight/monokai.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="deck-enhanced">
+<div class="reveal"><div class="slides">
+<section class="hero-slide" data-background-color="#102b41" data-name="LSP &amp; Tree-sitter">
+<div class="section-label">Introduction / The speaker</div>
+<div class="hero-layout"><div><h1>LSP <span class="hero-times">×</span><br>Tree-sitter<span class="title-dot">.</span></h1><p class="hero-subtitle">How editors understand code.<br>How AI tools can use it.</p></div><svg class="hero-art" viewBox="0 0 360 390" role="img" aria-label="Source code connected to syntax nodes"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M180 95V160M70 160H290M70 160V220M180 160V220M290 160V220M70 270V320M30 320H110M30 320V345M110 320V345M290 270V345"/></g><g fill="#102b41" stroke="currentColor" stroke-width="2"><rect x="110" y="30" width="140" height="65" rx="8"/><rect x="20" y="220" width="100" height="50" rx="6"/><rect x="140" y="220" width="80" height="50" rx="6"/><rect x="250" y="220" width="80" height="50" rx="6"/><circle cx="30" cy="355" r="10"/><circle cx="110" cy="355" r="10"/><circle cx="290" cy="355" r="10"/></g><g fill="currentColor" font-family="monospace" font-size="23" text-anchor="middle"><text x="180" y="72">{ code }</text><text x="70" y="252">call</text><text x="180" y="252">type</text><text x="290" y="252">ref</text></g></svg></div><aside class="notes">40 seconds. The talk covers the editor architecture first, then today’s Python tooling and applications to AI. The main talk is about 20 minutes; references and live demo are backup material. Transition: Introduce yourself briefly, then establish the rename problem before defining the technologies.</aside>
+</section>
+
+<section class="presenter-slide" data-name="About me">
+<div class="section-label">Introduction / About me</div>
+<div class="presenter-layout">
+  <div class="presenter-profile">
+    <div class="presenter-portrait"><img src="assets/presenter-photo.jpg" alt="Presenter wearing a zipped-up hooded sweatshirt"></div>
+    <div class="presenter-bio"><h2>Kuat Abylkassymov</h2><p
+      class="presenter-role"
+    >Backend developer · [qazcode]</p><ul
+      class="presenter-details"
+    ><li>Aventa</li></ul>
+              <p class="presenter-contact" >[kabylkassymov@beeline.kz]</p>
+    </div>
+  </div>
+  <div class="presenter-quotes">
+    <div class="quote-heading">In my own words</div>
+    <div class="quote-posts"><figure class="quote-post fragment fade-in" style="--quote-ratio: 504 / 107"><img src="assets/quote-1-light.png" alt="Post by Kuat Abylkassymov: Да, я знаю ООП. ООП ООП ООП ООП ООППА ГАНГНАМ СТАЙЛ"></figure><figure class="quote-post fragment fade-in" style="--quote-ratio: 497 / 135"><img src="assets/quote-2-light.png" alt="Post by Kuat Abylkassymov: You can’t spell «разраб» without «раб»"></figure><figure class="quote-post fragment fade-in" style="--quote-ratio: 509 / 100"><img src="assets/quote-3-light.png" alt="Post by Kuat Abylkassymov: С большой силой приходит большее ускорение"></figure></div>
+  </div>
+</div>
+<aside class="notes">30–45 seconds. Introduce yourself, your role and Aventa, then use your three posts as a personal opening. The portrait is unchanged. The screenshots have been edited into a light theme and retain the supplied order. The portrait and quote screenshots load from local files in assets/. Advance three times to fade in the quotes individually, in their supplied order. Move into the technical material after this short introduction.</aside>
+</section>
+
+<section data-name="Code is text. Editing needs structure.">
+<div class="section-label">01 / The problem</div>
+<h2>Code is text. Editing needs structure.</h2>
+<pre><code class="language-python">from features import normalize
+
+values = normalize([2.0, 4.0])
+label = &quot;normalize the inputs&quot;
+
+def preview(normalize):
+    return normalize[:5]</code></pre><p>Rename the imported function. Which occurrences should change?</p>
+<aside class="notes">45 seconds. The import and call refer to the function in features.py. The string is plain text and the parameter shadows the imported name. Text search discovers candidates; it does not establish symbol identity. This example is runnable in examples/. Transition: We need to distinguish code structure from matching text. Here are the three questions that organize the talk.</aside>
+</section>
+
+<section data-name="The story in three questions">
+<div class="section-label">01 / The problem</div>
+<h2>What does a code tool need to know?</h2>
+<ol>
+<li><strong>Structure:</strong> where does this call begin and end?</li>
+<li><strong>Relationships:</strong> which function does this name refer to?</li>
+<li><strong>Feedback:</strong> did the edit break anything?</li>
+</ol>
+<p>We’ll answer these in the editor, then apply them<br>to Python tooling and AI assistants.</p>
+<aside class="notes">30 seconds. State the audience promise: by the end, you should be able to explain what Tree-sitter contributes, what a language server contributes, and where ty, Ruff and uv fit. The rename example is the thread through the talk. Transition: first, can we find the call reliably using only a text pattern?</aside>
+</section>
+
+<section data-name="Why regex struggles with code structure">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>Text matches aren’t syntax matches.</h2>
+<p>Find complete calls to <code>normalize</code>.</p>
+<div class="syntax-comparison"><div><pre><code class="language-python">result = normalize(clean(values), mode=&quot;)&quot;)
+example = &quot;normalize(fake)&quot;
+# normalize(old_values)</code></pre><pre><code class="language-text">Regex: normalize\([^)]*\)</code></pre></div><div><table><thead><tr><th>This pattern matches</th><th>What went wrong?</th></tr></thead><tbody>
+<tr><td><code>normalize(clean(values)</code></td><td>Stops at the nested call’s closing parenthesis</td></tr>
+<tr><td><code>normalize(fake)</code></td><td>Matches text inside a string</td></tr>
+<tr><td><code>normalize(old_values)</code></td><td>Matches text inside a comment</td></tr>
+</tbody></table></div></div>
+<aside class="notes">About 50 seconds. This is a concrete failure of the displayed Python re pattern, not a claim every regular expression fails on every program. The negated character class stops at the first closing parenthesis, so it truncates a nested call. The pattern also has no Python string or comment context. Switching greediness does not supply a language grammar. You can build increasingly elaborate patterns for restricted cases, but nested constructs, escaping, multiline strings and new syntax increase maintenance cost. Regex remains excellent for text search, simple token patterns and prefiltering; this is about structural reliability, not a speed benchmark. Transition: Regex remains useful in everyday work. Take a short personal aside before moving from text patterns to syntax trees.</aside>
+</section>
+
+<section class="regex-quote-slide" data-name="Speaking of regex">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>Speaking of regex…</h2>
+<figure class="regex-quote">
+  <img src="assets/regex-quote-2023-hd.png" width="2172" height="724" alt="Post by Kuat Abylkassymov dated February 8, 2023: — Как часто вам приходится использовать RegEx на работе? — Регулярно">
+  <figcaption>Kuat Abylkassymov · 8 February 2023</figcaption>
+</figure>
+<aside class="notes">10–15 seconds. Pause for the joke: Регулярно means regularly, echoing regular expressions. This is your own post, shown as a cleaned high-resolution edit with the left divider removed. Keep it a short personal beat, not another technical explanation. Transition: regex is useful for text; when the task depends on nested code structure, let a language grammar identify the constructs. Continue to Tree-sitter.</aside>
+</section>
+
+<section class="chapter-slide" data-background-color="#123b3b" data-name="Tree-sitter: text → tree">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>From characters<br>to a navigable tree.</h2>
+<div class="stage-flow"><div><small>BUILD TIME</small><strong>Grammar → parser</strong></div><span aria-hidden="true">↓</span><div><small>RUNTIME</small><strong>Source → syntax tree</strong></div><span aria-hidden="true">↓</span><div><small>AFTER AN EDIT</small><strong>Reuse valid structure</strong></div></div><p class="chapter-caption">Source ranges. Concrete syntax. Incremental updates.</p>
+<aside class="notes">45 seconds. Separate parser generation from the embedded runtime. A parser is language-specific. Named-node traversal omits anonymous punctuation for convenience, but the concrete tree retains token structure. The tree is not a symbol table or a type checker. Transition: Let us inspect the concrete tree for the same Python call.</aside>
+</section>
+
+<section data-name="Tree-sitter: inspect the call">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>Tree-sitter: inspect the call</h2>
+<div class="columns"><div><pre><code class="language-python">normalize([2.0, 4.0])</code></pre></div><div><pre><code class="language-text">(call
+  function: (identifier)
+  arguments: (argument_list
+    (list
+      (float)
+      (float))))</code></pre></div></div><p>Named nodes from the Python grammar.</p><p><small>Concrete syntax trees also represent punctuation; omitted here.</small></p>
+<aside class="notes">60 seconds. This is a named-node view of the expression, not a full module tree. The identifier range points to normalize. The tree identifies a call but does not resolve which normalize this is. The query and node types depend on the language grammar. Transition: Once we have nodes and ranges, we can ask structural questions instead of constructing a more elaborate text pattern.</aside>
+</section>
+
+<section data-name="Query the syntax tree">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>Match the call, not its spelling in text.</h2>
+<div class="syntax-comparison"><div><div class="syntax-label">TREE-SITTER QUERY · PYTHON GRAMMAR</div><pre><code class="language-scheme">((call
+   function: (identifier) @callee
+   arguments: (argument_list) @args) @call
+ (#eq? @callee &quot;normalize&quot;))</code></pre></div><div><div class="syntax-label">CAPTURED SOURCE</div><pre><code class="language-text">@call → normalize(clean(values), mode=&quot;)&quot;)
+@args → (clean(values), mode=&quot;)&quot;)</code></pre></div></div><p>Nested calls stay intact. Strings and comments aren’t call nodes.</p>
+<p><small>Regex searches characters; Tree-sitter queries grammar-defined nodes.<br>Resolving which function this name denotes still needs semantic analysis.</small></p>
+<p class="sources">Sources: <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html">Query structure</a> · <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/3-predicates-and-directives.html">Predicates</a></p>
+<aside class="notes">About 60 seconds. The Python grammar identifies actual call nodes and nested argument lists, including the closing parenthesis inside the string literal. @call captures the full call; @args captures the entire argument list. #eq? filters the callee identifier text to normalize, so the inner clean call is excluded. The fake examples are string and comment nodes, so neither matches a call pattern. Common higher-level bindings support this predicate; the C query API itself exposes predicates for consumers to evaluate. This pattern covers direct identifier calls, not obj.normalize(...), aliases or dynamic calls. Syntax structure is more reliable than ad hoc text patterns for this task, but grammar support and parse recovery still matter. Tree-sitter does not prove symbol identity or replace a type checker. Regex can also be useful inside a Tree-sitter #match? predicate after the syntax has selected the right node. Transition: This is useful for a static file, but editors also need to keep that structure current while we type.</aside>
+</section>
+
+<section data-name="What happens during an edit?">
+<div class="section-label">02 / Structure · Tree-sitter</div>
+<h2>What happens during an edit?</h2>
+<pre><code class="language-text">Before: normalize([2.0, 4.0])
+During: normalize([2.0,
+After:  normalize([2.0, 8.0])</code></pre><ol><li>Update the old tree’s positions for the edit.</li><li>Parse the new source, supplying that edited tree.</li><li>Reuse syntax structure where possible.</li></ol><p><small>Error recovery keeps incomplete code useful to editor features.</small></p>
+<aside class="notes">60 seconds. Tree-sitter is a parser generator and an incremental parsing runtime. Do not promise it only reparses changed characters: an edit can invalidate a larger area depending on grammar and context. ERROR and missing nodes help represent incomplete code. Reusing syntax structure is not the same as rerunning only affected queries. Transition: We can now recognize the call efficiently. We still have not established which function the name denotes.</aside>
+</section>
+
+<section data-name="Shape of code. Meaning of code.">
+<div class="section-label">03 / Relationships · LSP</div>
+<h2>We found a call. Which function is it?</h2>
+<table><thead><tr><th>Tree-sitter</th><th>LSP + a language server</th></tr></thead><tbody><tr><td>“What is this construct?”</td><td>“What does this refer to?”</td></tr><tr><td>Syntax nodes and source ranges</td><td>Definitions, types and references</td></tr><tr><td>Useful while code is incomplete</td><td>Uses project and language analysis</td></tr></tbody></table><p>A syntax tree identifies the call.<br>A language service resolves the symbol behind the name.</p>
+<aside class="notes">45 seconds. Return to the opening normalize call. We can now identify its syntax and argument range, but a syntax tree alone does not establish which imported definition it refers to. Introduce semantic language services as the next layer. LSP is the protocol used to ask those services questions; the server performs the analysis. A server can use Tree-sitter or a different parser. Transition: how can several editors share that language intelligence without each rebuilding it?</aside>
+</section>
+
+<section data-name="Why LSP? M × N → M + N">
+<div class="section-label">03 / Relationships · LSP</div>
+<h2>One protocol. Fewer integrations.</h2>
+<div class="integration-equation"><div><span class="metric-label">BESPOKE INTEGRATIONS</span><strong>M × N</strong><span>3 editors × 4 languages = <b>12</b></span></div><span class="equation-arrow" aria-hidden="true">→</span><div><span class="metric-label">SHARED PROTOCOL</span><strong>M + N</strong><span>3 clients + 4 servers = <b>7</b></span></div></div><div class="protocol-diagram"><div class="diagram-list"><span>Editor A</span><span>Editor B</span><span>Editor C</span></div><div class="protocol-lines" aria-hidden="true">⟷</div><div class="protocol-hub">LSP<small>shared contract</small></div><div class="protocol-lines" aria-hidden="true">⟷</div><div class="diagram-list"><span>Python</span><span>TypeScript</span><span>Scala</span><span>Rust</span></div></div><p><small>M = editors, N = languages. Idealized integration cost, not a runtime speedup.</small></p>
+<aside class="notes">60 seconds. Before a shared contract, each editor and language pair may need bespoke integration. With LSP, each editor implements a client and each language implements a server. Adding one editor now means one client rather than four language integrations. Real clients still need capability handling, launch configuration and occasionally adapters; LSP does not eliminate every integration cost. Transition: The shared contract is a conversation. Let us follow what the client and server actually exchange.</aside>
+</section>
+
+<section data-name="A conversation, not magic">
+<div class="section-label">03 / Relationships · LSP</div>
+<h2>A conversation, not magic</h2>
+<svg class="lsp-sequence" viewBox="0 0 1120 390" role="img" aria-labelledby="lsp-sequence-title lsp-sequence-desc">
+  <title id="lsp-sequence-title">An LSP conversation between a client and a language server</title>
+  <desc id="lsp-sequence-desc">Time flows downwards. The client sends initialize with capabilities; the server responds with its capabilities. The client sends initialization and document notifications, then a hover request. The server responds with type information, signatures or documentation.</desc>
+  <defs>
+    <marker id="lsp-request-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#3375a3" stroke-width="1.5"/></marker>
+    <marker id="lsp-response-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#087d80" stroke-width="1.5"/></marker>
+    <marker id="lsp-notification-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 1 1 L 9 5 L 1 9" fill="none" stroke="#718391" stroke-width="1.5"/></marker>
+  </defs>
+  <g class="sequence-lifelines" fill="none" stroke="currentColor" stroke-opacity=".22" stroke-width="2" stroke-dasharray="5 7"><path d="M150 64V375"/><path d="M970 64V375"/></g>
+  <g class="sequence-actors" fill="currentColor"><rect x="60" y="8" width="180" height="50" rx="6"/><rect x="860" y="8" width="220" height="50" rx="6"/></g>
+  <g class="sequence-actor-labels" text-anchor="middle" font-size="24" font-weight="600"><text x="150" y="41">Editor / client</text><text x="970" y="41">Language server</text></g>
+  <g fill="none" stroke-width="2">
+    <path d="M150 110H970" stroke="#3375a3" marker-end="url(#lsp-request-arrow)"/>
+    <path d="M970 170H150" stroke="#087d80" marker-end="url(#lsp-response-arrow)"/>
+    <path d="M150 230H970" stroke="#718391" stroke-dasharray="6 5" marker-end="url(#lsp-notification-arrow)"/>
+    <path d="M150 290H970" stroke="#3375a3" marker-end="url(#lsp-request-arrow)"/>
+    <path d="M970 350H150" stroke="#087d80" marker-end="url(#lsp-response-arrow)"/>
+  </g>
+  <g class="sequence-message-labels" fill="currentColor" font-size="22">
+    <text x="176" y="97"><tspan class="sequence-method">initialize</tspan><tspan> · client capabilities</tspan></text>
+    <text x="944" y="157" text-anchor="end">result · server capabilities</text>
+    <text x="176" y="217" class="sequence-method">initialized · didOpen · didChange</text>
+    <text x="176" y="277"><tspan class="sequence-method">textDocument/hover</tspan><tspan> · position</tspan></text>
+    <text x="944" y="337" text-anchor="end">result · type / signature / docs</text>
+  </g>
+  <g class="sequence-kind-labels" fill="currentColor" fill-opacity=".65" font-size="14" letter-spacing="1">
+    <text x="995" y="115">REQUEST</text><text x="15" y="175">RESPONSE</text><text x="995" y="235">NOTIFY</text><text x="995" y="295">REQUEST</text><text x="15" y="355">RESPONSE</text>
+  </g>
+</svg>
+<p class="sequence-caption">JSON-RPC 2.0 · Requests have IDs; notifications have no response.</p>
+<aside class="notes">50 seconds. initialize is a request, initialized a notification. didOpen and didChange follow negotiated synchronization settings. Diagnostics may be push or pull. A server is commonly a local process over standard input/output; server does not mean cloud. Features must be advertised by both sides where required. Transition: Here is one of those requests as a concrete JSON-RPC message.</aside>
+</section>
+
+<section data-name="A real request shape">
+<div class="section-label">03 / Relationships · LSP</div>
+<h2>A real request shape</h2>
+<p>Ask about <code>normalize</code> on line 3 of analysis.py.</p><pre><code class="language-json">{
+  &quot;jsonrpc&quot;: &quot;2.0&quot;,
+  &quot;id&quot;: 7,
+  &quot;method&quot;: &quot;textDocument/definition&quot;,
+  &quot;params&quot;: {
+    &quot;textDocument&quot;: {&quot;uri&quot;: &quot;file:///project/analysis.py&quot;},
+    &quot;position&quot;: {&quot;line&quot;: 2, &quot;character&quot;: 10}
+  }
+}</code></pre><p><small>Zero-based positions. Stream framing headers omitted.</small></p>
+<aside class="notes">60 seconds. This body is valid JSON-RPC. The character offset is inside the function name. The server can return a location in features.py, multiple locations, LocationLinks, or null. Character units depend on negotiated encoding, UTF-16 by default. Requests have IDs; notifications do not receive responses. Transition: We have the structure and the protocol. Let us use them to solve the opening rename problem in the editor.</aside>
+</section>
+
+<section data-name="One edit. Two kinds of help.">
+<div class="section-label">04 / See it work · Editor</div>
+<h2>Live demo: the rename</h2>
+<p><code>examples/analysis.py</code> · Editor + Python parser + ty</p>
+<ol>
+<li class="fragment">Inspect the syntax tree — locate the call and arguments.</li>
+<li class="fragment">Go to definition — follow the symbol.</li>
+<li class="fragment">Rename to <code>scale_features</code> — edit its uses.</li>
+<li class="fragment">Check the string and local parameter; inspect a type error.</li>
+</ol>
+<p><small>Use your editor’s tree inspection and LSP actions. The deck itself does not run a server.</small></p>
+<aside class="notes">Allow about three minutes. Switch to the editor. Start on the normalize call, not the preview parameter. Inspect the syntax tree, return to the source, request a definition, return, then rename across files. Review features.py, analysis.py and check_scaling.py; the label string and preview parameter must stay unchanged. Show an argument-type error with a string input, then restore a valid input before running the scaling checks. If the live session fails, narrate these four steps using the slide. See PRESENTER_GUIDE.md for exact commands and preparation. Transition: we have seen the capabilities; which tools provide them for our Python team?</aside>
+</section>
+
+<section data-name="LSP is an interface, not a feature list">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>LSP is an interface, not a feature list</h2>
+<table><thead><tr><th>Tool</th><th>Language / role</th><th>What it exposes</th></tr></thead><tbody><tr><td>tsgo / native TypeScript</td><td>TypeScript; Go-based implementation</td><td>Type analysis + LSP language service</td></tr><tr><td>ty</td><td>Python</td><td>Type checking + language services</td></tr><tr><td>StyLua</td><td>Lua / Luau formatter</td><td>Formatting via <code>stylua --lsp</code></td></tr><tr><td>Metals</td><td>Scala</td><td>Navigation, diagnostics, completion</td></tr></tbody></table><p><small>Servers can expose broad intelligence or a narrow capability such as formatting.</small></p><p class="sources">Sources: <a href="https://github.com/microsoft/typescript-go">TypeScript native port</a> · <a href="https://docs.astral.sh/ty/features/language-server/">ty</a> · <a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua</a> · <a href="https://scalameta.org/metals/">Metals</a></p>
+<aside class="notes">55 seconds. tsgo is the native TypeScript preview executable, not a Go language server; gopls is for Go. The staging repository now says development moved to microsoft/TypeScript, and TypeScript 7 RC and later use the tsc command name. Do not present tsgo as a timeless installation command or conflate the old tsserver protocol with LSP. StyLua really has an LSP mode but it is a formatter, not a full Lua semantic service. Metals integrates Scala build information. Snapshot checked 2026-10-15. Transition: These implementations provide different capabilities. For our Python work, we need to compare the actual semantic servers.</aside>
+</section>
+
+<section data-name="Python: the Pyright family">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>Python: the Pyright family</h2>
+<table><thead><tr><th>Option</th><th>Why consider it?</th><th>Trade-off</th></tr></thead><tbody><tr><td>Pyright</td><td>Open-source checker + language server; CLI and editor analysis</td><td>Pylance adds features beyond the core server</td></tr><tr><td>Pylance</td><td>VS Code language experience built on Pyright</td><td>Closed-source extension; no standalone CI checker</td></tr><tr><td>basedpyright</td><td>Pyright fork with extra diagnostics, inlay hints and semantic highlighting</td><td>Stricter defaults; configure or baseline adoption</td></tr></tbody></table><p><small>Compare editor features and CI behavior separately. Snapshot: 15 October 2026.</small></p><p class="sources">Sources: <a href="https://github.com/microsoft/pyright/blob/main/docs/features.md">Pyright</a> · <a href="https://github.com/microsoft/pylance-release">Pylance</a> · <a href="https://docs.basedpyright.com/latest/">basedpyright</a></p>
+<aside class="notes">70 seconds. Pyright provides CLI type checking and a server. Pylance uses that engine but is a distinct VS Code extension with additional editor integration and bundled stubs. Results can differ because of versions, configuration and stubs. basedpyright is a fork with independent changes, not an identical distribution. It documents recommended mode and baselining. Choose based on the editors the team actually supports; no universal accuracy or performance ranking is implied. Transition: The distinction between Pyright and Pylance also affects portability; here is a historical example.</aside>
+</section>
+
+<section data-name="Open protocol. Different implementations.">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>Open protocol. Different implementations.</h2>
+<div class="historical-example">
+  <figure>
+    <img src="assets/pylance-conversation-2021.png" width="493" height="519" alt="Screenshot of a conversation dated May 11, 2021. Dan Taylor raises concerns about using Pylance outside its intended distribution. Kuat Abylkassymov replies that he hopes Pylance becomes open source and notes feature differences from Pyright.">
+    <figcaption>Conversation dated 11 May 2021 · Screenshot supplied by the presenter</figcaption>
+  </figure>
+  <div>
+    <h3>Protocol ≠ product</h3>
+    <p>LSP standardizes communication.</p>
+    <p>Pylance and Pyright are distinct products, with different distribution models and editor features.</p>
+    <p><small>Historical context for the portability discussion.</small></p>
+  </div>
+</div>
+<aside class="notes">About 45 seconds. Show the complete screenshot supplied by the presenter, including Kuat’s response. The image is dated 11 May 2021 and is presented as historical context, not as verification of current licensing terms or an independently authenticated record. Connect it to the preceding comparison: an open protocol does not imply an open-source implementation. Pyright’s open-source analysis engine and Pylance’s editor product are distinct. Avoid treating the message as a current legal interpretation. Transition: beyond the Pyright family, there are also independent analyzers and a plugin-based server.</aside>
+</section>
+
+<section data-name="Python: other current options">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>Python: other current options</h2>
+<table><thead><tr><th>Option</th><th>Architecture / emphasis</th><th>What to evaluate</th></tr></thead><tbody><tr><td>ty</td><td>Astral; Rust checker + language server; fine-grained incremental analysis</td><td>Type behavior, navigation and notebooks on your projects</td></tr><tr><td>Pyrefly</td><td>Meta; Rust checker + language server; navigation and refactorings</td><td>Editor parity; notebook support is documented as experimental</td></tr><tr><td>pylsp</td><td>Python server with Jedi and optional plugins</td><td>Flexible composition; type checking and refactoring depend on plugins</td></tr></tbody></table><p><small>All provide language services; architecture alone does not establish speed or correctness.</small></p><p class="sources">Sources: <a href="https://docs.astral.sh/ty/features/language-server/">ty features</a> · <a href="https://pyrefly.org/en/docs/IDE-features/">Pyrefly features</a> · <a href="https://github.com/python-lsp/python-lsp-server">pylsp</a></p>
+<aside class="notes">70 seconds. ty currently documents completion, definitions, references, rename, diagnostics and notebook support; do not describe it as only a command-line checker. Its fine-grained incrementality is a vendor-documented design, not our benchmark. Pyrefly documents comparable language services and code actions, with notebook support still marked experimental on the fetched page. pylsp uses Jedi for core navigation and completion, with Rope and other optional providers; a unified static checker is not its built-in default architecture. Snapshot 2026-10-15. Our recommendations are evaluation criteria rather than a measured state-of-the-art leaderboard. Transition: These are semantic server options. Ruff and uv are often mentioned alongside them, but solve different parts of the workflow.</aside>
+</section>
+
+<section data-name="ty, Ruff, uv: different problems">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>ty, Ruff, uv: different problems</h2>
+<table><thead><tr><th>Tool</th><th>Question it answers</th><th>Interface</th></tr></thead><tbody><tr><td>ty</td><td>Are these types and symbol uses consistent?</td><td><code>ty check</code> + language server</td></tr><tr><td>Ruff</td><td>Which lint rules fail? How should this code be formatted?</td><td><code>ruff check</code>, <code>ruff format</code>, <code>ruff server</code></td></tr><tr><td>uv</td><td>Which Python, dependencies and environment run this project?</td><td><code>uv sync</code>, <code>uv run</code>; package/project management</td></tr></tbody></table><p>One team can use all three together.</p><p class="sources">Sources: <a href="https://docs.astral.sh/ty/">ty</a> · <a href="https://docs.astral.sh/ruff/editors/">Ruff</a> · <a href="https://docs.astral.sh/uv/">uv</a></p>
+<aside class="notes">65 seconds. These are complementary Astral tools, not three competing LSPs. ty handles types and semantic language features. Ruff is a linter and formatter; it catches many bugs but is not a full static type checker or navigation server. uv manages interpreters, dependencies, lockfiles and execution environments. It can launch the other tools without replacing their analyses. Ruff’s native server replaces the older ruff-lsp; use current ruff server integration. Transition: Assign each problem to the tool responsible for it, using one small Python example.</aside>
+</section>
+
+<section data-name="Which tool fixes which failure?">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>Which tool fixes which failure?</h2>
+<div class="tool-example"><div><pre><code class="language-python">import os  # never used
+
+
+def mean(values: list[float]) -&gt; float:
+    return sum(values) / len(values)
+
+result = mean(&quot;1,2,3&quot;)</code></pre></div><div><table><thead><tr><th>Observation</th><th>Tool / action</th></tr></thead><tbody><tr><td>Unused <code>os</code> import</td><td>Ruff: <code>ruff check</code> reports F401</td></tr><tr><td><code>str</code> passed to <code>list[float]</code></td><td>ty (or another configured type checker)</td></tr><tr><td>Wrong Python / missing installed dependency</td><td>uv manages the environment; point the editor at it</td></tr><tr><td>Empty input causes division by zero</td><td>Tests and contract review</td></tr></tbody></table></div></div>
+<aside class="notes">55 seconds. This is an illustrative ownership example, not recorded tool output. Ruff F401 catches the unused import. A static checker with this annotation should flag the argument mismatch. uv does not infer the intended input type or fix program logic. A type checker generally cannot prove that a list is non-empty from this signature, so the empty-input bug still requires behavior validation. Missing imports may also be a wrong editor environment or package path, not an absent package. Transition: Because their responsibilities differ, we can compose them into a single development stack.</aside>
+</section>
+
+<section data-name="A Python stack that fits together">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>A Python stack that fits together</h2>
+<pre><code class="language-text">uv-managed project environment
+  ├── ONE primary semantic language server
+  │     ty / basedpyright / Pyright / Pyrefly / Pylance
+  ├── Ruff: lint, fixes, formatting
+  └── tests: runtime and domain behavior</code></pre><p>Match the editor interpreter to the project environment.</p><p><small>For a ty-based project: <code>uv run ty check</code> · <code>uv run ruff check</code><br>Install and pin those tools as project development dependencies first.</small></p>
+<aside class="notes">55 seconds. This is our integration recommendation, not a claim the named tools are interchangeable. Existing VS Code teams may keep Pylance and add Ruff. Mixed-editor teams can evaluate basedpyright or a Rust-based server using the same representative projects. Avoid duplicate diagnostics and competing rename/completion providers; intentional split configurations are possible. uv sync prepares dependencies, but configure the server to resolve that same environment. In Conda-heavy GPU workflows keep the environment strategy appropriate to the project rather than implying a forced migration. Transition: The best fit depends on our codebase. Compare these options using the same environment and representative tasks.</aside>
+</section>
+
+<section data-name="Choose with a representative Python repo">
+<div class="section-label">05 / Choose the tools · Python</div>
+<h2>Choose with a representative Python repo</h2>
+<ol><li>Use the same Python, dependencies and annotations.</li><li>Try navigation, rename, completion and notebooks.</li><li>Compare useful diagnostics and false positives.</li><li>Measure cold start, edit latency and memory.</li><li>Check editor/CI agreement and maintenance cost.</li></ol><p><small>Include your pandas/NumPy/Pydantic usage, monorepo imports and notebook workflows.</small></p>
+<aside class="notes">50 seconds. This is an evaluation protocol, not an endorsement based on vendor microbenchmarks. Track incomplete results and missed callers as well as latency. Pin versions and configuration when comparing tools. Notebook support is partly client-dependent. For AI, hold model, task and tests constant and compare correctness, context size and tool latency across repeated runs. Transition: So far, the human in the editor asks the questions. What changes if an AI agent asks those same questions?</aside>
+</section>
+
+<section class="chapter-slide" data-background-color="#102b41" data-name="Why LSP matters for AI">
+<div class="section-label">06 / Apply it to AI</div>
+<h2>Give AI a way to<br>check its assumptions.</h2>
+<table><thead><tr><th>Context</th><th>Scope</th><th>Feedback</th></tr></thead><tbody><tr><td>Follow definitions and inspect types</td><td>Find references before editing</td><td>Collect diagnostics after editing</td></tr><tr><td>Resolve which symbol a name denotes</td><td>Identify likely callers and edit locations</td><td>Give the agent concrete repair evidence</td></tr></tbody></table><p>An AI application can act as an LSP client,<br>or expose selected operations through a tool bridge.</p>
+<aside class="notes">65 seconds. An LLM can generate a plausible name without checking that it exists or infer the wrong signature. Tools let it inspect those assumptions. This is an architecture, not a claim all coding agents use LSP. A bridge manages process lifecycle, project roots, document state and result size. The model still plans and interprets results. Transition: Start with context: combine code boundaries with symbol relationships to retrieve relevant material.</aside>
+</section>
+
+<section data-name="Better context for code retrieval">
+<div class="section-label">06 / Apply it to AI</div>
+<h2>Better context for code retrieval</h2>
+<pre><code class="language-text">Tree-sitter              LSP server              AI application
+───────────              ──────────              ──────────────
+Functions, classes   →   Definitions, types   →   Focused context
+Imports + ranges         References              Relevant tests
+                                                 Task + budget</code></pre><p>Retrieve boundaries <em>and</em> relationships.</p><p><small>Keep paths and ranges; refresh after edits. Ranking remains an application concern.</small></p>
+<aside class="notes">55 seconds. Structural chunks reduce arbitrary splits; semantic queries can resolve names and follow dependencies. Text search and embeddings remain useful for concepts and documentation. Huge functions still need chunk limits. Syntax-aware chunking or LSP tools do not by themselves guarantee lower context size or better model accuracy; evaluate those outcomes. Transition: Once the agent edits that code, it needs feedback rather than assuming its proposed change is correct.</aside>
+</section>
+
+<section data-name="Inspect → edit → check → repair">
+<div class="section-label">06 / Apply it to AI</div>
+<h2>Inspect → edit → check → repair</h2>
+<pre><code class="language-text">Task: update a feature-extraction API
+
+1. Inspect definitions, types, references
+2. Edit the API and its callers
+3. Collect fresh diagnostics + run tests
+4. Repair the mismatch and check again</code></pre><blockquote>Expected DataFrame; received ndarray</blockquote><p><small>Illustrative diagnostic. Coverage depends on annotations, library stubs and configuration.</small></p>
+<aside class="notes">65 seconds. A function now expects a DataFrame to preserve column names but a caller passes an ndarray. A server can report that only if it can establish those types. The agent inspects whether to preserve labels or convert data. Validate diagnostic versions, limit retries and inspect the final diff. Tests should check column order, null handling and numerical behavior, not just type consistency. Transition: This loop provides useful evidence, but we must understand the blind spots of every tool involved.</aside>
+</section>
+
+<section data-name="Useful signals, different blind spots">
+<div class="section-label">06 / Apply it to AI</div>
+<h2>Useful signals, different blind spots</h2>
+<table><thead><tr><th>Tool</th><th>Useful signal</th><th>Practical limit</th></tr></thead><tbody><tr><td>Tree-sitter</td><td>Syntax + ranges</td><td>Symbol identity needs extra analysis</td></tr><tr><td>LSP server</td><td>Language-aware answers</td><td>Depends on capabilities, stubs and setup</td></tr><tr><td>Tests / execution</td><td>Behavior on exercised cases</td><td>Coverage and runtime state matter</td></tr><tr><td>AI model</td><td>Plans and proposed changes</td><td>Needs evidence and verification</td></tr></tbody></table><p><small>Notebook cell order, dynamic DataFrame schemas and data leakage go beyond static type checks.</small></p>
+<aside class="notes">55 seconds. Static services cannot know arbitrary live kernel values or validate experimental design. A DataFrame type does not establish column schema or correct train/test separation. Library plugins and typing coverage differ across checkers. LSP can also expose folding or semantic highlighting; Tree-sitter-based tools can add semantic analysis. Avoid treating syntax-versus-semantics as a strict feature partition. Transition: Return to the opening question and summarize what each layer contributes to the answer.</aside>
+</section>
+
+<section class="closing-slide" data-name="Structure. Relationships. Feedback.">
+<div class="section-label">Conclusion / Answering the opening question</div>
+<h2>Structure.<br><span>Relationships.</span><br>Feedback.</h2><p>The rename needs more than matching text:<br>identify the call, resolve the symbol, verify the change.</p><aside class="notes">40 seconds, then questions. Return explicitly to the opening normalize example. Tree-sitter can identify call syntax and distinguish it from a string or comment. A language server can resolve definitions and propose edits to symbol references, subject to its analysis limits. Diagnostics and tests provide evidence about the result. These same tools can help an AI agent inspect its assumptions. Final answer: code tools need structure, relationships and feedback. Ask the audience which of those capabilities is missing from their current workflow. The remaining slides are optional historical context, sources and demo backup material.</aside>
+</section>
+
+
+
+<section data-name="References: foundations" data-visibility="uncounted">
+<div class="section-label">Appendix / Sources</div>
+<h2>References: foundations</h2>
+<ul><li><a href="https://microsoft.github.io/language-server-protocol/">LSP overview</a> and <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/">3.17 message specification</a></li><li><a href="https://tree-sitter.github.io/tree-sitter/">Tree-sitter introduction</a></li><li><a href="https://tree-sitter.github.io/tree-sitter/using-parsers/2-basic-parsing.html">Concrete syntax trees</a> and <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html">incremental parsing</a></li><li><a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html">Tree-sitter query syntax</a></li><li><a href="https://revealjs.com/themes/">Reveal.js built-in themes</a></li></ul><p><small>AI workflows are proposed designs; performance gains were not benchmarked.</small></p>
+<aside class="notes">Backup. Established 3.17 protocol concepts are used without claiming this is the latest specification. Use the linked official docs for exact schemas.</aside>
+</section>
+
+<section data-name="References: Python landscape" data-visibility="uncounted">
+<div class="section-label">Appendix / Sources</div>
+<h2>References: Python landscape</h2>
+<ul><li><a href="https://github.com/microsoft/pyright/blob/main/docs/features.md">Pyright</a> · <a href="https://github.com/microsoft/pylance-release">Pylance</a></li><li><a href="https://docs.basedpyright.com/latest/benefits-over-pyright/pylance-features/">basedpyright editor features</a> · <a href="https://docs.basedpyright.com/latest/benefits-over-pyright/better-defaults/">defaults</a></li><li><a href="https://docs.astral.sh/ty/features/language-server/">ty language server</a></li><li><a href="https://pyrefly.org/en/docs/IDE-features/">Pyrefly IDE features</a></li><li><a href="https://github.com/python-lsp/python-lsp-server">Python LSP Server (pylsp)</a></li><li><a href="https://docs.astral.sh/ruff/editors/">Ruff editor integration</a> · <a href="https://docs.astral.sh/uv/">uv</a></li></ul><p><small>Documentation snapshot: 15 October 2026. Recheck capabilities before presenting.</small></p>
+<aside class="notes">Backup. The comparison describes roles and documented features, not a measured ranking. See PYTHON_TOOLING.md for the rationale and team evaluation checklist.</aside>
+</section>
+
+<section data-name="References: other languages" data-visibility="uncounted">
+<div class="section-label">Appendix / Sources</div>
+<h2>References: other languages</h2>
+<ul><li><a href="https://github.com/microsoft/typescript-go">Native TypeScript / tsgo staging repository</a><br><small>Development moved to <a href="https://github.com/microsoft/TypeScript">microsoft/TypeScript</a>; TypeScript 7 RC+ uses the tsc name.</small></li><li><a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua LSP formatting mode</a></li><li><a href="https://scalameta.org/metals/">Metals Scala language server</a></li></ul>
+<aside class="notes">Backup. Names, flags and release status change. StyLua exposes formatting only; this is a useful demonstration that LSP does not imply a full semantic feature suite.</aside>
+</section>
+
+<section data-visibility="uncounted" data-name="A five-minute editor demo">
+<div class="section-label">Appendix / Demo backup</div>
+<h2>A five-minute editor demo</h2>
+<ol><li>Open <code>examples/analysis.py</code>.</li><li>Inspect the Python syntax tree at the call.</li><li>Jump to definition; inspect the type of values.</li><li>Rename normalize to scale_features across files.</li><li>Verify the string and preview parameter stayed.</li><li>Run <code>python examples/check_scaling.py</code>.</li></ol><p><small>Requires Python editor support; tree inspection requires a Tree-sitter integration.</small></p>
+<aside class="notes">Optional live demo or a 60-second walkthrough. Tree-inspection UI and commands depend on the editor and plugins; avoid promising a portable shortcut. LSP support and Tree-sitter are separate installations. The deck does not run a server or parser itself. If the live demo fails, use the before/after slides. Verify every changed file including the test.</aside>
+</section>
+</div></div>
+<div class="deck-footer" aria-hidden="true"><span>LSP × TREE-SITTER</span><span id="chapter-label">Code intelligence</span></div>
+<div id="load-error" role="alert" hidden>The presentation could not load. Refresh the page to try again.</div>
+<script src="lib/reveal.js/dist/reveal.js"></script>
+<script src="lib/reveal.js/plugin/notes/notes.js"></script>
+<script src="lib/reveal.js/plugin/highlight/highlight.js"></script>
+<script src="presentation.js"></script>
+</body>
+</html>
