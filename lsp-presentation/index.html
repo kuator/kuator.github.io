@@ -231,8 +231,8 @@ After:  normalize([2.0, 8.0])</code></pre><ol><li>Update the old tree’s positi
 <section data-name="LSP is an interface, not a feature list">
 <div class="section-label">05 / Choose the tools · Python</div>
 <h2>LSP is an interface, not a feature list</h2>
-<table><thead><tr><th>Tool</th><th>Language / role</th><th>What it exposes</th></tr></thead><tbody><tr><td>tsgo / native TypeScript</td><td>TypeScript; Go-based implementation</td><td>Type analysis + LSP language service</td></tr><tr><td>ty</td><td>Python</td><td>Type checking + language services</td></tr><tr><td>StyLua</td><td>Lua / Luau formatter</td><td>Formatting via <code>stylua --lsp</code></td></tr><tr><td>Metals</td><td>Scala</td><td>Navigation, diagnostics, completion</td></tr></tbody></table><p><small>Servers can expose broad intelligence or a narrow capability such as formatting.</small></p><p class="sources">Sources: <a href="https://github.com/microsoft/typescript-go">TypeScript native port</a> · <a href="https://docs.astral.sh/ty/features/language-server/">ty</a> · <a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua</a> · <a href="https://scalameta.org/metals/">Metals</a></p>
-<aside class="notes">55 seconds. tsgo is the native TypeScript preview executable, not a Go language server; gopls is for Go. The staging repository now says development moved to microsoft/TypeScript, and TypeScript 7 RC and later use the tsc command name. Do not present tsgo as a timeless installation command or conflate the old tsserver protocol with LSP. StyLua really has an LSP mode but it is a formatter, not a full Lua semantic service. Metals integrates Scala build information. Snapshot checked 2026-10-15. Transition: These implementations provide different capabilities. For our Python work, we need to compare the actual semantic servers.</aside>
+<table><thead><tr><th>Tool</th><th>Language / role</th><th>What it exposes</th></tr></thead><tbody><tr><td>tsgo / native TypeScript</td><td>TypeScript; Go-based implementation</td><td>Type analysis + LSP language service</td></tr><tr><td>ty</td><td>Python</td><td>Type checking + language services</td></tr><tr><td>StyLua</td><td>Lua / Luau formatter</td><td>Formatting via <code>stylua --lsp</code></td></tr><tr><td>Metals v2</td><td>Java + Scala</td><td>Repository-scale navigation and diagnostics</td></tr></tbody></table><p><small>Servers can expose broad intelligence or a narrow capability such as formatting.</small></p><p class="sources">Sources: <a href="https://github.com/microsoft/typescript-go">TypeScript native port</a> · <a href="https://docs.astral.sh/ty/features/language-server/">ty</a> · <a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua</a> · <a href="https://www.databricks.com/blog/open-sourcing-metals-v2-databricks-java-and-scala-language-server-multi-million-line-codebases">Metals v2</a></p>
+<aside class="notes">55 seconds. tsgo is the native TypeScript preview executable, not a Go language server; gopls is for Go. The staging repository now says development moved to microsoft/TypeScript, and TypeScript 7 RC and later use the tsc command name. Do not present tsgo as a timeless installation command or conflate the old tsserver protocol with LSP. StyLua really has an LSP mode but it is a formatter, not a full Lua semantic service. Metals v2 adds first-class Java support alongside Scala; the AI section includes the Databricks case study. Snapshot checked 2026-10-15. Transition: These implementations provide different capabilities. For our Python work, we need to compare the actual semantic servers.</aside>
 </section>
 
 <section data-name="Python: the Pyright family">
@@ -302,7 +302,26 @@ result = mean(&quot;1,2,3&quot;)</code></pre></div><div><table><thead><tr><th>Ob
 <div class="section-label">05 / Choose the tools · Python</div>
 <h2>Choose with a representative Python repo</h2>
 <ol><li>Use the same Python, dependencies and annotations.</li><li>Try navigation, rename, completion and notebooks.</li><li>Compare useful diagnostics and false positives.</li><li>Measure cold start, edit latency and memory.</li><li>Check editor/CI agreement and maintenance cost.</li></ol><p><small>Include your pandas/NumPy/Pydantic usage, monorepo imports and notebook workflows.</small></p>
-<aside class="notes">50 seconds. This is an evaluation protocol, not an endorsement based on vendor microbenchmarks. Track incomplete results and missed callers as well as latency. Pin versions and configuration when comparing tools. Notebook support is partly client-dependent. For AI, hold model, task and tests constant and compare correctness, context size and tool latency across repeated runs. Transition: So far, the human in the editor asks the questions. What changes if an AI agent asks those same questions?</aside>
+<aside class="notes">50 seconds. This is an evaluation protocol, not an endorsement based on vendor microbenchmarks. Track incomplete results and missed callers as well as latency. Pin versions and configuration when comparing tools. Notebook support is partly client-dependent. For AI, hold model, task and tests constant and compare correctness, context size and tool latency across repeated runs. Transition: before giving these tools to an agent, consider a real case where engineers need to understand agent-generated code at repository scale.</aside>
+</section>
+
+<section data-name="Databricks: Metals v2 at monorepo scale">
+<div class="section-label">06 / Apply it to AI</div>
+<h2>AI-generated code still needs navigation.</h2>
+<p>Databricks · Metals v2 · Java + Scala</p>
+<div class="case-metrics">
+  <div><strong>26M</strong><span>lines in their monorepo</span></div>
+  <div><strong>8.7s</strong><span>median time-to-initial-intelligence</span></div>
+  <div><strong>Build-free</strong><span>initial repository index</span></div>
+</div>
+<ul>
+  <li>Index workspace sources before build synchronization.</li>
+  <li>Use compiler-backed navigation and diagnostics.</li>
+  <li>Use build metadata to improve analysis precision.</li>
+</ul>
+<p><small>Agents generating code increases the need for engineers to understand it.</small></p>
+<p class="sources">Source: <a href="https://www.databricks.com/blog/open-sourcing-metals-v2-databricks-java-and-scala-language-server-multi-million-line-codebases">Databricks, 11 August 2026</a> · Reported production measurements, not a cross-server benchmark.</p>
+<aside class="notes">50 seconds. This case concerns engineers navigating agent-generated code, rather than evidence that agents directly use LSP. Databricks reports the scale and median startup-usefulness metric shown here. Initial navigation precedes build synchronization; build information remains necessary for precise dependencies and generated code. At publication, the authors were preparing a stable v2 release. Transition: humans benefit from language intelligence around AI-generated code. An AI application can also expose those services as tools for the agent itself.</aside>
 </section>
 
 <section class="chapter-slide" data-background-color="#102b41" data-name="Why LSP matters for AI">
@@ -366,7 +385,7 @@ Imports + ranges         References              Relevant tests
 <section data-name="References: other languages" data-visibility="uncounted">
 <div class="section-label">Appendix / Sources</div>
 <h2>References: other languages</h2>
-<ul><li><a href="https://github.com/microsoft/typescript-go">Native TypeScript / tsgo staging repository</a><br><small>Development moved to <a href="https://github.com/microsoft/TypeScript">microsoft/TypeScript</a>; TypeScript 7 RC+ uses the tsc name.</small></li><li><a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua LSP formatting mode</a></li><li><a href="https://scalameta.org/metals/">Metals Scala language server</a></li></ul>
+<ul><li><a href="https://github.com/microsoft/typescript-go">Native TypeScript / tsgo staging repository</a><br><small>Development moved to <a href="https://github.com/microsoft/TypeScript">microsoft/TypeScript</a>; TypeScript 7 RC+ uses the tsc name.</small></li><li><a href="https://github.com/JohnnyMorganz/StyLua#language-server-mode">StyLua LSP formatting mode</a></li><li><a href="https://scalameta.org/metals/">Metals overview</a> · <a href="https://www.databricks.com/blog/open-sourcing-metals-v2-databricks-java-and-scala-language-server-multi-million-line-codebases">Databricks Metals v2: Java + Scala case study</a></li></ul>
 <aside class="notes">Backup. Names, flags and release status change. StyLua exposes formatting only; this is a useful demonstration that LSP does not imply a full semantic feature suite.</aside>
 </section>
 

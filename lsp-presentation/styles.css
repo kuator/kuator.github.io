@@ -17,6 +17,10 @@
 .regex-quote { margin: 42px 0; }
 .reveal .regex-quote img { display: block; width: 100%; max-width: 1000px; height: auto; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; }
 .regex-quote figcaption { font-size: 17px; margin-top: 18px; }
+.case-metrics { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 28px; margin: 28px 0; }
+.case-metrics > div { border-top: 3px solid #087d80; padding-top: 14px; }
+.case-metrics strong { display: block; font-size: 1.5em; line-height: 1.2; }
+.case-metrics span { display: block; font-size: .52em; margin-top: 8px; }
 .reveal .meme-slide img { display: block; width: auto; height: 620px; max-width: 100%; max-height: 620px; object-fit: contain; margin: 0 auto; border: 0; box-shadow: none; }
 .presenter-layout { display: grid; grid-template-columns: 340px minmax(0, 1fr); align-items: center; gap: 48px; max-width: 1140px; }
 .presenter-portrait svg, .reveal .presenter-portrait img { display: block; width: 280px; height: 280px; max-width: 100%; max-height: none; object-fit: cover; border-radius: 14px; margin: 0 0 22px; }
